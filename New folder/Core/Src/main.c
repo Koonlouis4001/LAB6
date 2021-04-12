@@ -52,8 +52,10 @@ UART_HandleTypeDef huart2;
 
 uint8_t ADCUpdateFlag = 0;
 uint16_t ADCFeedBack = 0;
+float mvADCFeedBack;
 
 uint16_t PWMOut = 3000;
+uint16_t CalPWMOut;
 
 uint64_t _micro = 0;
 uint64_t TimeOutputLoop = 0;
@@ -133,8 +135,7 @@ int main(void)
 	  {
 	  	TimeOutputLoop = micros();
 	  	// #001
-
-	  	__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, PWMOut);
+	  	__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, PWMOut); //3.3V = 4095 so 1V = 1241
 
 	  }
 
@@ -465,6 +466,15 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
 	ADCFeedBack = HAL_ADC_GetValue(&hadc1);
 	ADCUpdateFlag = 1;
+	CalPWMOut = (PWMOut*1241)/ADCFeedBack; 	//จากการใช้บัญญัติไตรยางค์เพื่อหาความสัมพันธ์ระหว่าง PWMOut & ADCFeedBack
+											//โดย PWMOut -> FeedBackADC
+											//แต่เราต้องการให้ PWMOut -> 1241 (1V)
+											//แต่เพื่อป้องกันความสับสนจึงต้องสร้างตัวแปรใหม่ขึ้นมาใช้ในสมการคือ CalPWMOut
+											//และกลายเป็น (CalPWMOut/PWMOut) = (1241/ADCFeedBack)
+											//จากนั้นปรับสมการใหม่จึงได้เป็น CalPWMOut = (PWMOut*1241)/ADCFeedBack
+
+	PWMOut = CalPWMOut;
+	mvADCFeedBack = (ADCFeedBack * 3300.0)/4096.0;
 }
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
