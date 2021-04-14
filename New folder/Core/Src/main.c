@@ -135,17 +135,25 @@ int main(void)
 	  {
 	  	TimeOutputLoop = micros();
 	  	// #001
+	  	//กรณีเสริมเนื่องจากหากหมุนเร็วเกินไป มีโอกาสที่ค่า PWMOut จะลดลงจนเป็น 0 ทำให้ไม่สามารถคำนวณหา PWMOut ต่อได้
 	  	if(CalPWMOut > 9100)	//จากการคำนวณค่าสูงสุดที่เป็นไปได้คือ 9091
+	  							//เผื่อไว้สำหรับค่าความคลาดเคลื่อน
 	  	{
 	  		CalPWMOut = 9100;
 	  	}
 	  	else if(CalPWMOut < 4500)	//และค่าต่ำสุดคือ 4545
+	  								//เผื่อไว้สำหรับค่าความคลาดเคลื่อน
 	  	{
 	  		CalPWMOut = 4500;
 	  	}
 	  	else
 	  	{
-	  		CalPWMOut = 1241*PWMOut/ADCFeedBack;
+	  		CalPWMOut = 1241*PWMOut/ADCFeedBack;	//จากการใช้บัญญัติไตรยางค์เพื่อหาความสัมพันธ์ระหว่าง PWMOut & ADCFeedBack
+													//โดย PWMOut -> FeedBackADC
+													//แต่เราต้องการให้ PWMOut -> 1241 (1V)
+													//แต่เพื่อป้องกันความสับสนจึงต้องสร้างตัวแปรใหม่ขึ้นมาใช้ในสมการคือ CalPWMOut
+													//และกลายเป็น (CalPWMOut/PWMOut) = (1241/ADCFeedBack)
+													//จากนั้นปรับสมการใหม่จึงได้เป็น CalPWMOut = (PWMOut*1241)/ADCFeedBack
 	  	}
 	  	PWMOut = CalPWMOut;
 	  	mvADCFeedBack = (ADCFeedBack * 3300.0)/4096.0;
