@@ -54,8 +54,12 @@ uint8_t ADCUpdateFlag = 0;
 uint16_t ADCFeedBack = 0;
 float mvADCFeedBack;
 
-uint64_t PWMOut = 3000;
-uint64_t CalPWMOut;
+float PWMOut = 3000;
+float CalPWMOut;
+float FeedBackError;
+float PWMOutError;
+float PWMOutChange;
+float Kp = 0.5;
 
 uint64_t _micro = 0;
 uint64_t TimeOutputLoop = 0;
@@ -135,29 +139,35 @@ int main(void)
 	  {
 	  	TimeOutputLoop = micros();
 	  	// #001
-	  	//กรณีเสริมเนื่องจากหากหมุนเร็วเกินไป มีโอกาสที่ค่า PWMOut จะลดลงจนเป็น 0 ทำให้ไม่สามารถคำนวณหา PWMOut ต่อได้
-	  	if(CalPWMOut > 9100)	//จากการคำนวณค่าสูงสุดที่เป็นไปได้คือ 9091
-	  							//เผื่อไว้สำหรับค่าความคลาดเคลื่อน
+	  	/*CalPWMOut = 1241*PWMOut/ADCFeedBack;	//จากการใช้บัญญัติไตรยางค์เพื่อหาความสัมพันธ์ระหว่าง PWMOut & ADCFeedBack
+	  											//โดย PWMOut -> FeedBackADC
+	  											//แต่เราต้องการให้ PWMOut -> 1241 (1V)
+	  											//แต่เพื่อป้องกันความสับสนจึงต้องสร้างตัวแปรใหม่ขึ้นมาใช้ในสมการคือ CalPWMOut
+	  											//และกลายเป็น (CalPWMOut/PWMOut) = (1241/ADCFeedBack)
+	  											//จากนั้นปรับสมการใหม่จึงได้เป็น CalPWMOut = (PWMOut*1241)/ADCFeedBack
+	  	//กรณีเสริมเพราะหากค่า PWMOut ลดลงจนเป็น 0 จะทำให้ไม่สามารถคำนวณหา PWMOut ใหม่ต่อได้
+	  	//และหากค่า PWMOut เกินกว่า 10000 อาจจะทำให้ค่าที่คำนวณหา PWMOut ใหม่ไม่ตรงได้
+	  	if(CalPWMOut < 4000)	//จากการคำนวณค่าต่ำสุดที่เป็นไปได้คือ 4545
+	  								//แต่ต้องเผื่อไว้เพราะค่าในความเป็นจริงอาจจะต่ำกว่าที่คำนวณไว้ก็ได้
 	  	{
-	  		CalPWMOut = 9100;
+	  		CalPWMOut = 4000;
 	  	}
-	  	else if(CalPWMOut < 4500)	//และค่าต่ำสุดคือ 4545
-	  								//เผื่อไว้สำหรับค่าความคลาดเคลื่อน
+	  	else if(CalPWMOut > 10000) //หากค่า PWMOut สูงกว่า 10000 ค่า ADCFeedBack ที่ออกมาจะไม่มีทางสูงไปกว่าของ PWMOut = 10000 แล้ว
 	  	{
-	  		CalPWMOut = 4500;
-	  	}
-	  	else
+	  		CalPWMOut = 10000;
+	  	}*/
+	  	if(PWMOut > 10000)
 	  	{
-	  		CalPWMOut = 1241*PWMOut/ADCFeedBack;	//จากการใช้บัญญัติไตรยางค์เพื่อหาความสัมพันธ์ระหว่าง PWMOut & ADCFeedBack
-													//โดย PWMOut -> FeedBackADC
-													//แต่เราต้องการให้ PWMOut -> 1241 (1V)
-													//แต่เพื่อป้องกันความสับสนจึงต้องสร้างตัวแปรใหม่ขึ้นมาใช้ในสมการคือ CalPWMOut
-													//และกลายเป็น (CalPWMOut/PWMOut) = (1241/ADCFeedBack)
-													//จากนั้นปรับสมการใหม่จึงได้เป็น CalPWMOut = (PWMOut*1241)/ADCFeedBack
+	  		PWMOut = 10000;
 	  	}
+	  	FeedBackError = 1241 - ADCFeedBack;
+	  	PWMOutError = FeedBackError*PWMOut/ADCFeedBack;
+	  	PWMOutChange = Kp*PWMOutError;
+	  	CalPWMOut = PWMOut + PWMOutChange;
+
 	  	PWMOut = CalPWMOut;
-	  	mvADCFeedBack = (ADCFeedBack * 3300.0)/4096.0;
 	  	__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, PWMOut); //3.3V = 4095 so 1V = 1241
+	  	mvADCFeedBack = (ADCFeedBack * 3300.0)/4096.0;
 
 	  }
 
