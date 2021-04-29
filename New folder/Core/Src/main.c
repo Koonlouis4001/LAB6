@@ -59,7 +59,7 @@ float CalPWMOut;
 float FeedBackError;
 float PWMOutError;
 float PWMOutChange;
-float Kp = 0.5;
+float Kp = 0.3;
 
 uint64_t _micro = 0;
 uint64_t TimeOutputLoop = 0;
